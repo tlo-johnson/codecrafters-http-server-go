@@ -68,7 +68,7 @@ func handleRootPath(connection net.Conn) {
 
 func handleEchoPath(connection net.Conn, path string) {
   body, _ := strings.CutPrefix(path, "/echo/")
-  sendResponse(connection, body)
+  sendResponse(connection, body, "application/octet-stream")
 }
 
 func notFoundResponse(connection net.Conn) {
@@ -83,7 +83,7 @@ func handleUserAgentPath(connection net.Conn, lines []string) {
     }
 
     userAgent, _ := strings.CutPrefix(line, "User-Agent: ")
-    sendResponse(connection, userAgent)
+    sendResponse(connection, userAgent, "text/plain")
   }
 }
 
@@ -93,15 +93,15 @@ func handleFilePath(connection net.Conn, path string) {
   contents, err := os.ReadFile(absolutePath)
 
   if err == nil {
-    sendResponse(connection, string(contents))
+    sendResponse(connection, string(contents), "text/plain")
   } else {
     notFoundResponse(connection)
   }
 }
 
-func sendResponse(connection net.Conn, body string) {
+func sendResponse(connection net.Conn, body string, contentType string) {
   connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
-  connection.Write([]byte("Content-Type: text/plain\r\n"))
+  connection.Write([]byte("Content-Type: " + contentType + "\r\n"))
   connection.Write([]byte(fmt.Sprintf("Content-Length: %d\r\n", len(body))))
   connection.Write([]byte("\r\n"))
   connection.Write([]byte(body))
