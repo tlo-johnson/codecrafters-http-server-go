@@ -4,22 +4,18 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
 	listener, err := net.Listen("tcp", "0.0.0.0:4221")
-	if err != nil {
-		fmt.Println("Failed to bind to port 4221")
-		os.Exit(1)
-	}
+  exitOnError(err, "failed to bind to port 4221")
+
   defer listener.Close()
-	
   for {
     connection, err := listener.Accept()
-    if err != nil {
-      fmt.Println("Error accepting connection: ", err.Error())
-      os.Exit(1)
-    }
+    exitOnError(err, "error accepting connection")
+
     go handleConnection(connection)
   }
 }
@@ -27,6 +23,25 @@ func main() {
 func handleConnection(connection net.Conn) {
   defer connection.Close()
 
-  connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
-  connection.Write([]byte("\r\n"))
+  request := make([]byte, 1024)
+  _, err := connection.Read(request)
+  exitOnError(err, "could not read request");
+
+  path := strings.Split(string(request), " ")[1]
+  if path == "/" {
+    connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
+    connection.Write([]byte("\r\n"))
+  } else {
+    connection.Write([]byte("HTTP/1.1 404 Not Found\r\n"))
+    connection.Write([]byte("\r\n"))
+  }
+}
+
+func exitOnError(err error, message string) {
+  if err == nil {
+    return
+  }
+
+  fmt.Printf("%s: %s", message, err.Error())
+  os.Exit(1)
 }
