@@ -37,8 +37,23 @@ func handleConnection(connection net.Conn) {
   _, err := connection.Read(request)
   exitOnError(err, "could not read request");
 
-  requestComponents := strings.Split(string(request), "\r\n")
-  path := strings.Split(requestComponents[0], " ")[1]
+  var (
+    method string
+    path string
+    body []byte
+  )
+  requestContents := strings.Split(string(request), "\r\n")
+
+  for index, value := range(requestContents) {
+    if index == 0 {
+      parts := strings.Split(value, " ")
+      method = parts[0]
+      path = parts[1]
+    } else if value == "" {
+      body = []byte(strings.Join(requestContents[index + 1:], "\r\n"))
+    }
+  }
+
   switch {
     case path == "/":
       handleRootPath(connection)
@@ -49,11 +64,15 @@ func handleConnection(connection net.Conn) {
       return
 
     case path == "/user-agent":
-      handleUserAgentPath(connection, requestComponents)
+      handleUserAgentPath(connection, requestContents)
       return
 
-    case strings.HasPrefix(path, "/files/"):
-      handleFilePath(connection, path)
+    case method == "GET" && strings.HasPrefix(path, "/files/"):
+      handleGetFilePath(connection, path)
+      return
+
+    case method == "POST" && strings.HasPrefix(path, "/files/"):
+      handlePostFilePath(connection, path, body)
       return
 
     default:
@@ -87,9 +106,9 @@ func handleUserAgentPath(connection net.Conn, lines []string) {
   }
 }
 
-func handleFilePath(connection net.Conn, path string) {
+func handleGetFilePath(connection net.Conn, path string) {
   relativePath, _ := strings.CutPrefix(path, "/files/")
-  absolutePath := directory + relativePath
+  absolutePath := directory + "/" + relativePath
   contents, err := os.ReadFile(absolutePath)
 
   if err == nil {
@@ -97,6 +116,18 @@ func handleFilePath(connection net.Conn, path string) {
   } else {
     notFoundResponse(connection)
   }
+}
+
+func handlePostFilePath(connection net.Conn, path string, body []byte) {
+  relativePath, _ := strings.CutPrefix(path, "/files/")
+  absolutePath := directory + "/" + relativePath
+  err := os.WriteFile(absolutePath, body, 0666)
+
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  connection.Write([]byte("HTTP/1.1 201 OK\r\n\r\n"))
 }
 
 func sendResponse(connection net.Conn, body string, contentType string) {
