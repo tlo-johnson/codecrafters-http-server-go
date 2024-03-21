@@ -28,7 +28,10 @@ func handleConnection(connection net.Conn) {
   exitOnError(err, "could not read request");
 
   path := strings.Split(string(request), " ")[1]
-  if strings.HasPrefix(path, "/echo/") {
+  if path == "/" {
+    connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
+    connection.Write([]byte("\r\n"))
+  } else if strings.HasPrefix(path, "/echo/") {
     body, _ := strings.CutPrefix(path, "/echo/")
 
     connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
