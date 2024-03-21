@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -41,6 +42,7 @@ func handleConnection(connection net.Conn) {
     method string
     path string
     body []byte
+    contentLength int
   )
   requestContents := strings.Split(string(request), "\r\n")
 
@@ -49,10 +51,13 @@ func handleConnection(connection net.Conn) {
       parts := strings.Split(value, " ")
       method = parts[0]
       path = parts[1]
+    } else if strings.HasPrefix(value, "Content-Length") {
+      length, _ := strings.CutPrefix(value, "Content-Length: ")
+      contentLength, _ = strconv.Atoi(length)
     } else if value == "" {
       rawBody := strings.Join(requestContents[index + 1:], "\r\n")
       body = []byte(rawBody)
-      body = body[:len(rawBody)]
+      body = body[:contentLength]
     }
   }
 
