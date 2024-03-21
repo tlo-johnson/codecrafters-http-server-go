@@ -68,7 +68,7 @@ func handleRootPath(connection net.Conn) {
 
 func handleEchoPath(connection net.Conn, path string) {
   body, _ := strings.CutPrefix(path, "/echo/")
-  sendResponse(connection, body, "application/octet-stream")
+  sendResponse(connection, body, "text/plain")
 }
 
 func notFoundResponse(connection net.Conn) {
@@ -93,7 +93,7 @@ func handleFilePath(connection net.Conn, path string) {
   contents, err := os.ReadFile(absolutePath)
 
   if err == nil {
-    sendResponse(connection, string(contents), "text/plain")
+    sendResponse(connection, string(contents), "application/octet-stream")
   } else {
     notFoundResponse(connection)
   }
