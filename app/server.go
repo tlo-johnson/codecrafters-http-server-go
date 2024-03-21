@@ -27,6 +27,7 @@ func main() {
 
 func parseFlags() {
   flag.StringVar(&directory, "directory", "", "directory containing source files")
+  flag.Parse()
 }
 
 func handleConnection(connection net.Conn) {
