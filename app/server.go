@@ -28,21 +28,38 @@ func handleConnection(connection net.Conn) {
   exitOnError(err, "could not read request");
 
   path := strings.Split(string(request), " ")[1]
-  if path == "/" {
-    connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
-    connection.Write([]byte("\r\n"))
-  } else if strings.HasPrefix(path, "/echo/") {
-    body, _ := strings.CutPrefix(path, "/echo/")
+  switch {
+    case path == "/":
+      handleRootPath(connection)
+      return
 
-    connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
-    connection.Write([]byte("Content-Type: text/plain\r\n"))
-    connection.Write([]byte(fmt.Sprintf("Content-Length: %d\r\n", len(body))))
-    connection.Write([]byte("\r\n"))
-    connection.Write([]byte(body))
-  } else {
-    connection.Write([]byte("HTTP/1.1 404 Not Found\r\n"))
-    connection.Write([]byte("\r\n"))
+    case strings.HasPrefix(path, "/echo/"):
+      handleEchoPath(connection, path)
+      return
+
+    default:
+      handleUnknownPath(connection)
   }
+}
+
+func handleRootPath(connection net.Conn) {
+  connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
+  connection.Write([]byte("\r\n"))
+}
+
+func handleEchoPath(connection net.Conn, path string) {
+  body, _ := strings.CutPrefix(path, "/echo/")
+
+  connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
+  connection.Write([]byte("Content-Type: text/plain\r\n"))
+  connection.Write([]byte(fmt.Sprintf("Content-Length: %d\r\n", len(body))))
+  connection.Write([]byte("\r\n"))
+  connection.Write([]byte(body))
+}
+
+func handleUnknownPath(connection net.Conn) {
+  connection.Write([]byte("HTTP/1.1 404 Not Found\r\n"))
+  connection.Write([]byte("\r\n"))
 }
 
 func exitOnError(err error, message string) {
