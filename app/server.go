@@ -27,7 +27,8 @@ func handleConnection(connection net.Conn) {
   _, err := connection.Read(request)
   exitOnError(err, "could not read request");
 
-  path := strings.Split(string(request), " ")[1]
+  requestComponents := strings.Split(string(request), "\r\n")
+  path := strings.Split(requestComponents[0], " ")[1]
   switch {
     case path == "/":
       handleRootPath(connection)
@@ -35,6 +36,10 @@ func handleConnection(connection net.Conn) {
 
     case strings.HasPrefix(path, "/echo/"):
       handleEchoPath(connection, path)
+      return
+
+    case path == "/user-agent":
+      handleUserAgentPath(connection, requestComponents)
       return
 
     default:
@@ -49,17 +54,31 @@ func handleRootPath(connection net.Conn) {
 
 func handleEchoPath(connection net.Conn, path string) {
   body, _ := strings.CutPrefix(path, "/echo/")
-
-  connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
-  connection.Write([]byte("Content-Type: text/plain\r\n"))
-  connection.Write([]byte(fmt.Sprintf("Content-Length: %d\r\n", len(body))))
-  connection.Write([]byte("\r\n"))
-  connection.Write([]byte(body))
+  sendResponse(connection, body)
 }
 
 func handleUnknownPath(connection net.Conn) {
   connection.Write([]byte("HTTP/1.1 404 Not Found\r\n"))
   connection.Write([]byte("\r\n"))
+}
+
+func handleUserAgentPath(connection net.Conn, lines []string) {
+  for _, line := range lines {
+    if !strings.HasPrefix(line, "User-Agent") {
+      continue
+    }
+
+    userAgent, _ := strings.CutPrefix(line, "User-Agent: ")
+    sendResponse(connection, userAgent)
+  }
+}
+
+func sendResponse(connection net.Conn, body string) {
+  connection.Write([]byte("HTTP/1.1 200 OK\r\n"))
+  connection.Write([]byte("Content-Type: text/plain\r\n"))
+  connection.Write([]byte(fmt.Sprintf("Content-Length: %d\r\n", len(body))))
+  connection.Write([]byte("\r\n"))
+  connection.Write([]byte(body))
 }
 
 func exitOnError(err error, message string) {
