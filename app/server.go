@@ -50,7 +50,9 @@ func handleConnection(connection net.Conn) {
       method = parts[0]
       path = parts[1]
     } else if value == "" {
-      body = []byte(strings.Join(requestContents[index + 1:], "\r\n"))
+      rawBody := strings.Join(requestContents[index + 1:], "\r\n")
+      body = []byte(rawBody)
+      body = body[:len(rawBody)]
     }
   }
 
