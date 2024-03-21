@@ -1,13 +1,18 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"os"
 	"strings"
 )
 
+var directory string
+
 func main() {
+  parseFlags()
+
 	listener, err := net.Listen("tcp", "0.0.0.0:4221")
   exitOnError(err, "failed to bind to port 4221")
 
@@ -18,6 +23,10 @@ func main() {
 
     go handleConnection(connection)
   }
+}
+
+func parseFlags() {
+  flag.StringVar(&directory, "directory", "", "directory containing source files")
 }
 
 func handleConnection(connection net.Conn) {
@@ -42,8 +51,12 @@ func handleConnection(connection net.Conn) {
       handleUserAgentPath(connection, requestComponents)
       return
 
+    case strings.HasPrefix(path, "/files/"):
+      handleFilePath(connection, path)
+      return
+
     default:
-      handleUnknownPath(connection)
+      notFoundResponse(connection)
   }
 }
 
@@ -57,7 +70,7 @@ func handleEchoPath(connection net.Conn, path string) {
   sendResponse(connection, body)
 }
 
-func handleUnknownPath(connection net.Conn) {
+func notFoundResponse(connection net.Conn) {
   connection.Write([]byte("HTTP/1.1 404 Not Found\r\n"))
   connection.Write([]byte("\r\n"))
 }
@@ -70,6 +83,18 @@ func handleUserAgentPath(connection net.Conn, lines []string) {
 
     userAgent, _ := strings.CutPrefix(line, "User-Agent: ")
     sendResponse(connection, userAgent)
+  }
+}
+
+func handleFilePath(connection net.Conn, path string) {
+  relativePath, _ := strings.CutPrefix(path, "/files/")
+  absolutePath := directory + relativePath
+  contents, err := os.ReadFile(absolutePath)
+
+  if err == nil {
+    sendResponse(connection, string(contents))
+  } else {
+    notFoundResponse(connection)
   }
 }
 
